@@ -11,49 +11,75 @@ namespace AppEmployee.Controllers
 {
     public class EmployeesController : Controller
     {
-        private readonly EmployeeDBContext _context;
+        private UnitOfWork unitOfWork = null;        
 
-        public EmployeesController(EmployeeDBContext context)
+        public EmployeesController(UnitOfWork uow)
         {
-            _context = context;
+            unitOfWork = uow;
         }
 
         // GET: Employees
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            var employeeDBContext = _context.Employee.Include(e => e.Gender).Include(e => e.Location).Include(e => e.Position).Include(e => e.Title);
-            return View(await employeeDBContext.ToListAsync());
+            List<Employee> employees = unitOfWork.EmployeeRepository.GetEmployees();
+            foreach(Employee emp in employees)
+            {
+                emp.Title = GetTitle(emp.TitleId);
+                emp.Location = GetLocation(emp.LocationId);
+                emp.Position = GetPosition(emp.PositionId);
+                emp.Gender = GetGender(emp.GenderId);
+            }
+            return View(employees.ToList());
+        }
+
+        public Title GetTitle(int id)
+        {
+            return unitOfWork.EmployeeRepository.GetTitle().Where(x => x.TitleId == id).FirstOrDefault();
+        }
+
+        public Location GetLocation(int id)
+        {
+            return unitOfWork.EmployeeRepository.GetLocation().Where(x => x.LocationId == id).FirstOrDefault();
+        }
+
+        public Position GetPosition(int id)
+        {
+            return unitOfWork.EmployeeRepository.GetPosition().Where(x => x.PositionId == id).FirstOrDefault();
+        }
+
+        public Gender GetGender(int id)
+        {
+            return unitOfWork.EmployeeRepository.GetGender().Where(x => x.GenderId == id).FirstOrDefault();
         }
 
         // GET: Employees/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public IActionResult Details(int id)
         {
-            if (id == null)
+            if (id == 0)
             {
                 return NotFound();
             }
 
-            var employee = await _context.Employee
-                .Include(e => e.Gender)
-                .Include(e => e.Location)
-                .Include(e => e.Position)
-                .Include(e => e.Title)
-                .FirstOrDefaultAsync(m => m.EmployeeId == id);
+            Employee employee = unitOfWork.EmployeeRepository.GetEmployeeByID(id);         
+    
             if (employee == null)
             {
                 return NotFound();
             }
-
+            employee.Gender = GetGender(employee.GenderId);
+            employee.Position = GetPosition(employee.PositionId);
+            employee.Location = GetLocation(employee.LocationId);
+            employee.Title = GetTitle(employee.TitleId);
             return View(employee);
         }
 
         // GET: Employees/Create
         public IActionResult Create()
         {
-            ViewData["GenderId"] = new SelectList(_context.Gender, "GenderId", "Name");
-            ViewData["LocationId"] = new SelectList(_context.Location, "LocationId", "Name");
-            ViewData["PositionId"] = new SelectList(_context.Position, "PositionId", "Name");
-            ViewData["TitleId"] = new SelectList(_context.Title, "TitleId", "Name");
+            ViewData["GenderId"] = new SelectList(unitOfWork.EmployeeRepository.GetGender(), "GenderId", "Name");
+            ViewData["LocationId"] = new SelectList(unitOfWork.EmployeeRepository.GetLocation(), "LocationId", "Name");
+            ViewData["PositionId"] = new SelectList(unitOfWork.EmployeeRepository.GetPosition(), "PositionId", "Name");
+            ViewData["TitleId"] = new SelectList(unitOfWork.EmployeeRepository.GetTitle(), "TitleId", "Name");
             return View();
         }
 
@@ -62,48 +88,39 @@ namespace AppEmployee.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("EmployeeId,FirstName,LastName,TitleId,DateOfBirth,GenderId,LocationId,PositionId,Age")] Employee employee)
+        public IActionResult Create([Bind("EmployeeId,FirstName,LastName,TitleId,DateOfBirth,GenderId,LocationId,PositionId,Age")] Employee employee)
         {           
             
             if (ModelState.IsValid)
             {
-                _context.Add(employee);
-                await _context.SaveChangesAsync();
+                unitOfWork.EmployeeRepository.InsertEmployee(employee);
+                unitOfWork.EmployeeRepository.Save();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GenderId"] = new SelectList(_context.Gender, "GenderId", "Name", employee.GenderId);
-            ViewData["LocationId"] = new SelectList(_context.Location, "LocationId", "Name", employee.LocationId);
-            ViewData["PositionId"] = new SelectList(_context.Position, "PositionId", "Name", employee.PositionId);
-            ViewData["TitleId"] = new SelectList(_context.Title, "TitleId", "Name", employee.TitleId);
+            ViewData["GenderId"] = new SelectList(unitOfWork.EmployeeRepository.GetGender(), "GenderId", "Name", employee.GenderId);
+            ViewData["LocationId"] = new SelectList(unitOfWork.EmployeeRepository.GetLocation(), "LocationId", "Name", employee.LocationId);
+            ViewData["PositionId"] = new SelectList(unitOfWork.EmployeeRepository.GetPosition(), "PositionId", "Name", employee.PositionId);
+            ViewData["TitleId"] = new SelectList(unitOfWork.EmployeeRepository.GetTitle(), "TitleId", "Name", employee.TitleId);
             return View(employee);
         }
-
-        public string GetTextFromTitleID(int titleId)
-        {
-            if (titleId != 0)
-            {
-                return _context.Title.Where(x => x.TitleId == titleId).Select(x => x.Name).FirstOrDefault();
-            }
-
-            return null;
-        }
+       
         // GET: Employees/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public IActionResult Edit(int id)
         {
-            if (id == null)
+            if (id == 0)
             {
                 return NotFound();
             }
 
-            var employee = await _context.Employee.FindAsync(id);
+            var employee =  unitOfWork.EmployeeRepository.GetEmployeeByID(id);
             if (employee == null)
             {
                 return NotFound();
             }
-            ViewData["GenderId"] = new SelectList(_context.Gender, "GenderId", "Name", employee.GenderId);
-            ViewData["LocationId"] = new SelectList(_context.Location, "LocationId", "Name", employee.LocationId);
-            ViewData["PositionId"] = new SelectList(_context.Position, "PositionId", "Name", employee.PositionId);
-            ViewData["TitleId"] = new SelectList(_context.Title, "TitleId", "Name", employee.TitleId);
+            ViewData["GenderId"] = new SelectList(unitOfWork.EmployeeRepository.GetGender(), "GenderId", "Name", employee.GenderId);
+            ViewData["LocationId"] = new SelectList(unitOfWork.EmployeeRepository.GetLocation(), "LocationId", "Name", employee.LocationId);
+            ViewData["PositionId"] = new SelectList(unitOfWork.EmployeeRepository.GetPosition(), "PositionId", "Name", employee.PositionId);
+            ViewData["TitleId"] = new SelectList(unitOfWork.EmployeeRepository.GetTitle(), "TitleId", "Name", employee.TitleId);
             return View(employee);
         }
 
@@ -112,7 +129,7 @@ namespace AppEmployee.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("EmployeeId,FirstName,LastName,TitleId,DateOfBirth,GenderId,LocationId,PositionId,Age")] Employee employee)
+        public IActionResult Edit(int id, [Bind("EmployeeId,FirstName,LastName,TitleId,DateOfBirth,GenderId,LocationId,PositionId,Age")] Employee employee)
         {
             if (id != employee.EmployeeId)
             {
@@ -123,8 +140,8 @@ namespace AppEmployee.Controllers
             {
                 try
                 {
-                    _context.Update(employee);
-                    await _context.SaveChangesAsync();
+                    unitOfWork.EmployeeRepository.UpdateEmployee(employee);
+                    unitOfWork.EmployeeRepository.Save();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -139,31 +156,30 @@ namespace AppEmployee.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GenderId"] = new SelectList(_context.Gender, "GenderId", "Name", employee.GenderId);
-            ViewData["LocationId"] = new SelectList(_context.Location, "LocationId", "Name", employee.LocationId);
-            ViewData["PositionId"] = new SelectList(_context.Position, "PositionId", "Name", employee.PositionId);
-            ViewData["TitleId"] = new SelectList(_context.Title, "TitleId", "Name", employee.TitleId);
+            ViewData["GenderId"] = new SelectList(unitOfWork.EmployeeRepository.GetGender(), "GenderId", "Name", employee.GenderId);
+            ViewData["LocationId"] = new SelectList(unitOfWork.EmployeeRepository.GetLocation(), "LocationId", "Name", employee.LocationId);
+            ViewData["PositionId"] = new SelectList(unitOfWork.EmployeeRepository.GetPosition(), "PositionId", "Name", employee.PositionId);
+            ViewData["TitleId"] = new SelectList(unitOfWork.EmployeeRepository.GetTitle(), "TitleId", "Name", employee.TitleId);
             return View(employee);
         }
 
         // GET: Employees/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public IActionResult Delete(int id)
         {
-            if (id == null)
+            if (id == 0)
             {
                 return NotFound();
             }
 
-            var employee = await _context.Employee
-                .Include(e => e.Gender)
-                .Include(e => e.Location)
-                .Include(e => e.Position)
-                .Include(e => e.Title)
-                .FirstOrDefaultAsync(m => m.EmployeeId == id);
+            var employee = unitOfWork.EmployeeRepository.GetEmployeeByID(id);
             if (employee == null)
             {
                 return NotFound();
             }
+            employee.Gender = GetGender(employee.GenderId);
+            employee.Position = GetPosition(employee.PositionId);
+            employee.Location = GetLocation(employee.LocationId);
+            employee.Title = GetTitle(employee.TitleId);
 
             return View(employee);
         }
@@ -171,17 +187,17 @@ namespace AppEmployee.Controllers
         // POST: Employees/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public IActionResult DeleteConfirmed(int id)
         {
-            var employee = await _context.Employee.FindAsync(id);
-            _context.Employee.Remove(employee);
-            await _context.SaveChangesAsync();
+            var employee = unitOfWork.EmployeeRepository.GetEmployeeByID(id);
+            unitOfWork.EmployeeRepository.DeleteEmployee(id);
+            unitOfWork.EmployeeRepository.Save();
             return RedirectToAction(nameof(Index));
         }
 
         private bool EmployeeExists(int id)
         {
-            return _context.Employee.Any(e => e.EmployeeId == id);
+            return unitOfWork.EmployeeRepository.GetEmployees().Any(e => e.EmployeeId == id);
         }
     }
 }

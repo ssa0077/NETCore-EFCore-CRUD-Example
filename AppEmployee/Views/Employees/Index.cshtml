@@ -69,15 +69,16 @@
 </table>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}   
     <script src="https://cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+   
     <script type="text/javascript">
         jQuery(document).ready(function () {
             $('.table').DataTable({
                 "bPaginate": false,
                 "bLengthChange": false,
                 "bFilter": true,
-                "bInfo": false,
+                "bInfo": true,
                 "bAutoWidth": false
             });
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AppEmployee.Interfaces;
 using AppEmployee.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -37,6 +38,8 @@ namespace AppEmployee
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddDbContext<EmployeeDBContext>(option =>
             option.UseSqlServer("Server=DESKTOP-8PS1H35;Database=EmployeeDB;Trusted_Connection=True;"));
+            services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+            services.AddScoped<UnitOfWork, UnitOfWork>();
 
         }
 
